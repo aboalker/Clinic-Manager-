@@ -22,13 +22,22 @@ export default function Login() {
         toast.success(t.auth.welcomeBack);
         setLocation("/dashboard");
       },
-      onError: () => toast.error(t.auth.invalidCreds),
+      onError: (err: any) => {
+        const status = err?.response?.status ?? err?.status;
+        if (status === 401) toast.error(t.auth.invalidCreds);
+        else if (status === 400) toast.error("الرجاء إدخال بريد إلكتروني وكلمة مرور صحيحين");
+        else toast.error("تعذّر تسجيل الدخول، تحقق من اتصالك بالإنترنت");
+      },
     },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    login({ data: { email, password } });
+    if (!email.trim() || !password) {
+      toast.error("الرجاء إدخال البريد الإلكتروني وكلمة المرور");
+      return;
+    }
+    login({ data: { email: email.trim(), password } });
   };
 
   return (
