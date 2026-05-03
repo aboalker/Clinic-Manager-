@@ -35,7 +35,6 @@ export const ar = {
     emailInUse: "هذا البريد مستخدم بالفعل",
     welcomeBack: "أهلاً بك مجدداً",
     accountCreated: "تم إنشاء الحساب بنجاح، أهلاً بك!",
-    demoNote: "حساب تجريبي: doctor@clinic.com / demo1234",
   },
 
   dashboard: {

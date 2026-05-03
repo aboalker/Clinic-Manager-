@@ -12,8 +12,8 @@ import { t } from "@/lib/i18n";
 export default function Login() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const [email, setEmail] = useState("doctor@clinic.com");
-  const [password, setPassword] = useState("demo1234");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const { mutate: login, isPending } = useLogin({
     mutation: {
@@ -140,9 +140,6 @@ export default function Login() {
             </Link>
           </p>
 
-          <div className="mt-8 p-4 rounded-xl bg-accent/50 border border-accent text-center text-xs text-muted-foreground">
-            <p dir="ltr">{t.auth.demoNote}</p>
-          </div>
         </div>
       </div>
     </div>

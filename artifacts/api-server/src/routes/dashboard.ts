@@ -1,13 +1,48 @@
 import { Router, Request, Response } from "express";
 import { db, appointmentsTable, patientsTable } from "@workspace/db";
-import { eq, count, gte, lte, and, asc } from "drizzle-orm";
-import { requireAuth } from "../middlewares/auth.js";
+import { eq, count, gte, and, asc, desc } from "drizzle-orm";
+import { requireAuth, JwtPayload } from "../middlewares/auth.js";
 
 const router = Router();
 router.use(requireAuth);
 
-router.get("/summary", async (_req: Request, res: Response) => {
+function doctorIdOf(req: Request): number {
+  return (req as Request & { doctor: JwtPayload }).doctor.doctorId;
+}
+
+const apptSelectShape = {
+  id: appointmentsTable.id,
+  patientId: appointmentsTable.patientId,
+  date: appointmentsTable.date,
+  time: appointmentsTable.time,
+  reason: appointmentsTable.reason,
+  status: appointmentsTable.status,
+  notes: appointmentsTable.notes,
+  createdAt: appointmentsTable.createdAt,
+  patient: {
+    id: patientsTable.id,
+    doctorId: patientsTable.doctorId,
+    name: patientsTable.name,
+    age: patientsTable.age,
+    email: patientsTable.email,
+    phone: patientsTable.phone,
+    address: patientsTable.address,
+    bloodType: patientsTable.bloodType,
+    notes: patientsTable.notes,
+    lastVisitDate: patientsTable.lastVisitDate,
+    createdAt: patientsTable.createdAt,
+  },
+};
+
+router.get("/summary", async (req: Request, res: Response) => {
   const today = new Date().toISOString().split("T")[0];
+  const doctorId = doctorIdOf(req);
+
+  const scopedAppt = (extra: any) =>
+    db.select({ count: count() })
+      .from(appointmentsTable)
+      .innerJoin(patientsTable, eq(appointmentsTable.patientId, patientsTable.id))
+      .where(and(eq(patientsTable.doctorId, doctorId), extra));
 
   const [
     todayAppts,
@@ -18,17 +53,13 @@ router.get("/summary", async (_req: Request, res: Response) => {
     upcomingCount,
     patientsSeen,
   ] = await Promise.all([
-    db.select({ count: count() }).from(appointmentsTable).where(eq(appointmentsTable.date, today)),
-    db.select({ count: count() }).from(patientsTable),
-    db.select({ count: count() }).from(appointmentsTable).where(eq(appointmentsTable.status, "confirmed")),
-    db.select({ count: count() }).from(appointmentsTable).where(eq(appointmentsTable.status, "pending")),
-    db.select({ count: count() }).from(appointmentsTable).where(eq(appointmentsTable.status, "cancelled")),
-    db.select({ count: count() }).from(appointmentsTable).where(
-      and(gte(appointmentsTable.date, today), eq(appointmentsTable.status, "confirmed"))
-    ),
-    db.select({ count: count() }).from(appointmentsTable).where(
-      and(eq(appointmentsTable.date, today), eq(appointmentsTable.status, "confirmed"))
-    ),
+    scopedAppt(eq(appointmentsTable.date, today)),
+    db.select({ count: count() }).from(patientsTable).where(eq(patientsTable.doctorId, doctorId)),
+    scopedAppt(eq(appointmentsTable.status, "confirmed")),
+    scopedAppt(eq(appointmentsTable.status, "pending")),
+    scopedAppt(eq(appointmentsTable.status, "cancelled")),
+    scopedAppt(and(gte(appointmentsTable.date, today), eq(appointmentsTable.status, "confirmed"))!),
+    scopedAppt(and(eq(appointmentsTable.date, today), eq(appointmentsTable.status, "confirmed"))!),
   ]);
 
   res.json({
@@ -45,38 +76,16 @@ router.get("/summary", async (_req: Request, res: Response) => {
 router.get("/upcoming", async (req: Request, res: Response) => {
   const limit = parseInt(String(req.query.limit ?? "5"));
   const today = new Date().toISOString().split("T")[0];
+  const doctorId = doctorIdOf(req);
 
   const appointments = await db
-    .select({
-      id: appointmentsTable.id,
-      patientId: appointmentsTable.patientId,
-      date: appointmentsTable.date,
-      time: appointmentsTable.time,
-      reason: appointmentsTable.reason,
-      status: appointmentsTable.status,
-      notes: appointmentsTable.notes,
-      createdAt: appointmentsTable.createdAt,
-      patient: {
-        id: patientsTable.id,
-        name: patientsTable.name,
-        age: patientsTable.age,
-        email: patientsTable.email,
-        phone: patientsTable.phone,
-        address: patientsTable.address,
-        bloodType: patientsTable.bloodType,
-        notes: patientsTable.notes,
-        lastVisitDate: patientsTable.lastVisitDate,
-        createdAt: patientsTable.createdAt,
-      },
-    })
+    .select(apptSelectShape)
     .from(appointmentsTable)
     .innerJoin(patientsTable, eq(appointmentsTable.patientId, patientsTable.id))
-    .where(
-      and(
-        gte(appointmentsTable.date, today),
-        lte(appointmentsTable.status, "confirmed")
-      )
-    )
+    .where(and(
+      eq(patientsTable.doctorId, doctorId),
+      gte(appointmentsTable.date, today),
+    ))
     .orderBy(asc(appointmentsTable.date), asc(appointmentsTable.time))
     .limit(limit);
 
@@ -85,11 +94,13 @@ router.get("/upcoming", async (req: Request, res: Response) => {
 
 router.get("/recent-patients", async (req: Request, res: Response) => {
   const limit = parseInt(String(req.query.limit ?? "5"));
+  const doctorId = doctorIdOf(req);
 
   const patients = await db
     .select()
     .from(patientsTable)
-    .orderBy(patientsTable.createdAt)
+    .where(eq(patientsTable.doctorId, doctorId))
+    .orderBy(desc(patientsTable.createdAt))
     .limit(limit);
 
   res.json(patients);
