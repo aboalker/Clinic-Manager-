@@ -3,6 +3,13 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production";
 
+if (process.env.NODE_ENV === "production" && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16)) {
+  throw new Error(
+    "JWT_SECRET environment variable is required in production and must be at least 16 characters. " +
+    "Generate one with: openssl rand -base64 64"
+  );
+}
+
 export interface JwtPayload {
   doctorId: number;
   email: string;

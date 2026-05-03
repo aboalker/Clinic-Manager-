@@ -1,25 +1,36 @@
 import { useState, useEffect } from "react";
-import { useParams, useLocation } from "wouter";
-import { useGetAppointment, useUpdateAppointment, useDeleteAppointment, getGetAppointmentQueryKey } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useParams, useLocation, Link } from "wouter";
+import {
+  useGetAppointment, useUpdateAppointment, useDeleteAppointment,
+  getGetAppointmentQueryKey, getListAppointmentsQueryKey
+} from "@workspace/api-client-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Calendar, Clock, User, FileText } from "lucide-react";
-import { Link } from "wouter";
+import { ArrowRight, Trash2, CalendarDays, Clock, User, FileText, Pencil } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { getListAppointmentsQueryKey } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
+import { t, formatDateAr } from "@/lib/i18n";
+
+const statusBadge = (s: string) => {
+  switch (s) {
+    case "confirmed": return { label: t.appointments.statusConfirmed, cls: "bg-emerald-100 text-emerald-700 border-emerald-200" };
+    case "pending": return { label: t.appointments.statusPending, cls: "bg-amber-100 text-amber-700 border-amber-200" };
+    case "cancelled": return { label: t.appointments.statusCancelled, cls: "bg-red-100 text-red-700 border-red-200" };
+    default: return { label: s, cls: "bg-slate-100 text-slate-700 border-slate-200" };
+  }
+};
 
 export default function ViewAppointment() {
   const { id } = useParams();
   const appointmentId = parseInt(id || "0", 10);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -28,7 +39,7 @@ export default function ViewAppointment() {
   const [notes, setNotes] = useState("");
 
   const { data: appointment, isLoading } = useGetAppointment(appointmentId, {
-    query: { enabled: !!appointmentId, queryKey: getGetAppointmentQueryKey(appointmentId) }
+    query: { enabled: !!appointmentId, queryKey: getGetAppointmentQueryKey(appointmentId) },
   });
 
   useEffect(() => {
@@ -44,117 +55,114 @@ export default function ViewAppointment() {
   const { mutate: updateAppointment, isPending: isUpdating } = useUpdateAppointment({
     mutation: {
       onSuccess: (data) => {
-        toast.success("Appointment updated");
+        toast.success(t.appointments.updated);
         queryClient.setQueryData(getGetAppointmentQueryKey(appointmentId), data);
         queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey() });
         setIsEditing(false);
       },
-      onError: () => toast.error("Failed to update")
-    }
+      onError: () => toast.error(t.appointments.updateFailed),
+    },
   });
 
   const { mutate: deleteAppointment, isPending: isDeleting } = useDeleteAppointment({
     mutation: {
       onSuccess: () => {
-        toast.success("Appointment deleted");
+        toast.success(t.appointments.deleted);
         queryClient.invalidateQueries({ queryKey: getListAppointmentsQueryKey() });
         setLocation("/appointments");
       },
-      onError: () => toast.error("Failed to delete")
-    }
+      onError: () => toast.error(t.appointments.deleteFailed),
+    },
   });
 
-  if (isLoading) return <div className="p-8 text-center text-slate-500">Loading appointment details...</div>;
-  if (!appointment) return <div className="p-8 text-center text-slate-500">Appointment not found</div>;
+  if (isLoading) return <div className="p-8 text-center text-muted-foreground">{t.appointments.loadingDetails}</div>;
+  if (!appointment) return <div className="p-8 text-center text-muted-foreground">{t.appointments.notFound}</div>;
+
+  const sb = statusBadge(appointment.status);
 
   const handleUpdate = (e: React.FormEvent) => {
     e.preventDefault();
     updateAppointment({
       id: appointmentId,
-      data: { date, time, reason, status, notes: notes || undefined }
+      data: { date, time, reason, status, notes: notes || undefined },
     });
   };
 
-  const getStatusColor = (s: string) => {
-    switch (s) {
-      case 'confirmed': return "bg-emerald-100 text-emerald-800 border-emerald-200";
-      case 'pending': return "bg-amber-100 text-amber-800 border-amber-200";
-      case 'cancelled': return "bg-red-100 text-red-800 border-red-200";
-      default: return "bg-slate-100 text-slate-800 border-slate-200";
-    }
-  };
-
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/appointments" className="p-2 rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
-            <ArrowLeft size={20} />
+    <div className="max-w-4xl mx-auto space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <Link href="/appointments" className="p-2.5 rounded-xl hover:bg-accent text-muted-foreground transition-colors">
+            <ArrowRight size={20} />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Appointment Details</h1>
-            <p className="text-slate-500">Manage visit information</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">{t.appointments.details}</h1>
+            <p className="text-muted-foreground text-sm">{t.appointments.detailsSub}</p>
           </div>
         </div>
         <div className="flex gap-2">
           {!isEditing && (
-            <Button variant="outline" onClick={() => setIsEditing(true)}>Edit</Button>
+            <Button variant="outline" onClick={() => setIsEditing(true)} className="gap-2">
+              <Pencil size={16} /> {t.appointments.edit}
+            </Button>
           )}
-          <Button 
-            variant="destructive" 
+          <Button
+            variant="destructive"
             onClick={() => {
-              if (window.confirm("Are you sure you want to delete this appointment?")) {
+              if (window.confirm(t.appointments.deleteConfirm)) {
                 deleteAppointment({ id: appointmentId });
               }
             }}
             disabled={isDeleting}
-            className="flex items-center gap-2"
+            className="gap-2"
           >
-            <Trash2 size={16} /> Delete
+            <Trash2 size={16} /> {t.appointments.delete}
           </Button>
         </div>
       </div>
 
       {!isEditing ? (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-6">
-            <Card className="border-slate-200 shadow-sm">
-              <CardContent className="pt-6 space-y-6">
-                <div className="flex items-start justify-between">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          <div className="md:col-span-2">
+            <Card className="border-0 shadow-md h-full">
+              <CardContent className="p-6 md:p-8 space-y-6">
+                <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-900">{appointment.reason}</h2>
-                    <p className="text-slate-500 mt-1">Status: 
-                      <Badge variant="outline" className={`ml-2 ${getStatusColor(appointment.status)}`}>
-                        {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-                      </Badge>
-                    </p>
+                    <h2 className="text-xl md:text-2xl font-extrabold">{appointment.reason}</h2>
+                    <Badge variant="outline" className={`${sb.cls} mt-2 font-semibold`}>{sb.label}</Badge>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+                <div className="grid grid-cols-2 gap-5 pt-4 border-t">
                   <div className="flex items-start gap-3">
-                    <Calendar className="text-blue-500 mt-0.5" size={20} />
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                      <CalendarDays size={18} />
+                    </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-500">Date</p>
-                      <p className="text-slate-900">{new Date(appointment.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      <p className="text-xs font-semibold text-muted-foreground">{t.appointments.date}</p>
+                      <p className="font-bold mt-0.5">{formatDateAr(appointment.date)}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Clock className="text-blue-500 mt-0.5" size={20} />
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                      <Clock size={18} />
+                    </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-500">Time</p>
-                      <p className="text-slate-900">{appointment.time}</p>
+                      <p className="text-xs font-semibold text-muted-foreground">{t.appointments.time}</p>
+                      <p className="font-bold mt-0.5" dir="ltr">{appointment.time}</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-100">
+                <div className="pt-4 border-t">
                   <div className="flex items-start gap-3">
-                    <FileText className="text-slate-400 mt-0.5" size={20} />
-                    <div>
-                      <p className="text-sm font-medium text-slate-500">Notes</p>
-                      <p className="text-slate-900 whitespace-pre-wrap mt-1">
-                        {appointment.notes || "No additional notes provided."}
+                    <div className="w-10 h-10 rounded-xl bg-muted text-muted-foreground flex items-center justify-center">
+                      <FileText size={18} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-muted-foreground">{t.appointments.notes}</p>
+                      <p className="mt-1 whitespace-pre-wrap text-foreground/90">
+                        {appointment.notes || t.appointments.noNotes}
                       </p>
                     </div>
                   </div>
@@ -163,98 +171,66 @@ export default function ViewAppointment() {
             </Card>
           </div>
 
-          <div className="md:col-span-1">
-            <Card className="border-slate-200 shadow-sm bg-slate-50">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <User size={18} className="text-slate-500" />
-                  Patient
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-slate-500">Patient ID</p>
-                    <p className="font-medium text-slate-900">#{appointment.patientId}</p>
-                  </div>
-                  <Link href={`/patients/${appointment.patientId}`}>
-                    <Button variant="outline" className="w-full mt-2">View Patient Profile</Button>
-                  </Link>
+          <div>
+            <Card className="border-0 shadow-md gradient-brand-soft border-primary/10 h-full">
+              <CardContent className="p-6">
+                <div className="flex items-center gap-2 mb-4 text-primary">
+                  <User size={18} />
+                  <span className="font-bold">{t.appointments.patientCard}</span>
                 </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground">{t.appointments.patientId}</p>
+                  <p className="font-extrabold text-lg">#{appointment.patientId}</p>
+                </div>
+                <Link href={`/patients/${appointment.patientId}`}>
+                  <Button variant="outline" className="w-full mt-5 bg-white">
+                    {t.appointments.viewProfile}
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           </div>
         </div>
       ) : (
-        <Card className="border-slate-200 shadow-sm">
-          <CardContent className="pt-6">
-            <form onSubmit={handleUpdate} className="space-y-6">
+        <Card className="border-0 shadow-md">
+          <CardContent className="p-6 md:p-8">
+            <form onSubmit={handleUpdate} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="date">Date</Label>
-                  <Input 
-                    id="date" 
-                    type="date" 
-                    value={date} 
-                    onChange={(e) => setDate(e.target.value)} 
-                    required 
-                    className="bg-white"
-                  />
+                  <Label htmlFor="date" className="font-semibold">{t.appointments.date}</Label>
+                  <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required className="h-11" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="time">Time</Label>
-                  <Input 
-                    id="time" 
-                    type="time" 
-                    value={time} 
-                    onChange={(e) => setTime(e.target.value)} 
-                    required 
-                    className="bg-white"
-                  />
+                  <Label htmlFor="time" className="font-semibold">{t.appointments.time}</Label>
+                  <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} required className="h-11" />
                 </div>
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="reason">Reason for Visit</Label>
-                <Input 
-                  id="reason" 
-                  value={reason} 
-                  onChange={(e) => setReason(e.target.value)} 
-                  required 
-                  className="bg-white"
-                />
+                <Label htmlFor="reason" className="font-semibold">{t.appointments.reason}</Label>
+                <Input id="reason" value={reason} onChange={(e) => setReason(e.target.value)} required className="h-11" />
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select value={status} onValueChange={(val: any) => setStatus(val)}>
-                  <SelectTrigger className="bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Label htmlFor="status" className="font-semibold">{t.appointments.status}</Label>
+                <Select value={status} onValueChange={(v: any) => setStatus(v)}>
+                  <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="pending">{t.appointments.statusPending}</SelectItem>
+                    <SelectItem value="confirmed">{t.appointments.statusConfirmed}</SelectItem>
+                    <SelectItem value="cancelled">{t.appointments.statusCancelled}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea 
-                  id="notes" 
-                  value={notes} 
-                  onChange={(e) => setNotes(e.target.value)} 
-                  className="min-h-[100px] bg-white"
-                />
+                <Label htmlFor="notes" className="font-semibold">{t.appointments.notes}</Label>
+                <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-[100px]" />
               </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <div className="flex justify-end gap-3 pt-5 border-t">
                 <Button type="button" variant="outline" onClick={() => setIsEditing(false)}>
-                  Cancel
+                  {t.appointments.cancel}
                 </Button>
-                <Button type="submit" className="bg-blue-500 hover:bg-blue-600 text-white" disabled={isUpdating}>
-                  {isUpdating ? "Saving..." : "Save Changes"}
+                <Button type="submit" disabled={isUpdating}
+                  className="gradient-brand text-white border-0 shadow-lg shadow-primary/20 px-6 font-bold">
+                  {isUpdating ? t.appointments.updating : t.appointments.update}
                 </Button>
               </div>
             </form>

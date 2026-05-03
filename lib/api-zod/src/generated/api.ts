@@ -25,7 +25,24 @@ export const LoginBody = zod.object({
 export const LoginResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
+  clinicName: zod.string(),
   email: zod.string(),
+});
+
+/**
+ * @summary Create a new doctor account
+ */
+export const signupBodyNameMin = 2;
+
+export const signupBodyClinicNameMin = 2;
+
+export const signupBodyPasswordMin = 6;
+
+export const SignupBody = zod.object({
+  name: zod.string().min(signupBodyNameMin),
+  clinicName: zod.string().min(signupBodyClinicNameMin),
+  email: zod.string().email(),
+  password: zod.string().min(signupBodyPasswordMin),
 });
 
 /**
@@ -41,6 +58,7 @@ export const LogoutResponse = zod.object({
 export const GetMeResponse = zod.object({
   id: zod.number(),
   name: zod.string(),
+  clinicName: zod.string(),
   email: zod.string(),
 });
 

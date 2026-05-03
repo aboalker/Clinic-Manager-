@@ -25,7 +25,18 @@ export interface LoginBody {
 export interface AuthUser {
   id: number;
   name: string;
+  clinicName: string;
   email: string;
+}
+
+export interface SignupBody {
+  /** @minLength 2 */
+  name: string;
+  /** @minLength 2 */
+  clinicName: string;
+  email: string;
+  /** @minLength 6 */
+  password: string;
 }
 
 export interface Patient {

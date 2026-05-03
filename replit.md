@@ -1,48 +1,32 @@
-# Workspace
+# طبيبي (ClinicOS)
 
-## Overview
-
-pnpm workspace monorepo using TypeScript. Clinic management web app (ClinicOS) for doctors.
+Arabic-first clinic management web app.
 
 ## Stack
+- Frontend: React + Vite (`artifacts/clinic-app`), Tailwind v4, wouter, TanStack Query, Cairo/Tajawal fonts, RTL
+- Backend: Express + Drizzle + PostgreSQL (`artifacts/api-server`), JWT in httpOnly cookies, bcrypt
+- Contract: OpenAPI in `lib/api-spec` → orval generates `@workspace/api-client-react` + `@workspace/api-zod`
+- Deploy: single Railway service (Express serves built React in prod) — see `RAILWAY_DEPLOYMENT.md`
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
-- **Frontend**: React + Vite + Tailwind CSS
-- **Auth**: JWT stored in httpOnly cookies (bcrypt password hashing)
+## Auth
+- `/login`, `/signup` are public; everything else is protected by `ProtectedRoute` + `AuthProvider`
+- Demo creds: `doctor@clinic.com` / `demo1234`
+- Doctor profile includes `clinicName` (shown in sidebar + dashboard greeting)
 
-## Artifacts
+## Localization
+- Entire UI is in Arabic with RTL layout (`<html lang="ar" dir="rtl">`)
+- All strings live in `artifacts/clinic-app/src/lib/i18n.ts` (also exposes `formatDateAr`, `formatDateShortAr`, `monthShortAr`)
+- Sidebar is on the right; FAB at bottom-left; emails/phones/times use `dir="ltr"`
 
-- **clinic-app** (`/`) — React + Vite frontend clinic management app
-- **api-server** (`/api`) — Express backend API
+## Design system
+- Brand: teal/emerald medical palette via `--primary 168 76% 38%` and `--sidebar 195 70% 14%`
+- Utilities: `.gradient-brand`, `.gradient-brand-soft`, `.text-gradient-brand`, `.glass-card`
+- Cards use `border-0 shadow-md` for a modern feel; rounded-2xl/3xl throughout
 
-## Demo Credentials
+## Codegen
+- After editing `lib/api-spec/openapi.yaml`: `pnpm --filter @workspace/api-spec run codegen`
+- ⚠️ Orval regenerates `lib/api-zod/src/index.ts` with broken refs — always overwrite to:
+  `export * from "./generated/api";`
 
-- Email: `doctor@clinic.com`
-- Password: `demo1234`
-
-## Key Commands
-
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-
-## DB Schema
-
-- `doctors` — doctor accounts with bcrypt-hashed passwords
-- `patients` — patient records (name, age, contact, blood type, notes, last visit)
-- `appointments` — appointments linked to patients (date, time, reason, status: confirmed|pending|cancelled)
-
-## Auth Flow
-
-JWT stored in httpOnly cookie (`token`), 7-day expiry. Protected routes require valid JWT via `requireAuth` middleware.
-
-See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+## Production serving
+`artifacts/api-server/src/app.ts` serves `artifacts/clinic-app/dist` and falls back to `index.html` for SPA routes when `NODE_ENV=production`.
