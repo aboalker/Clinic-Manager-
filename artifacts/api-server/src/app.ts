@@ -35,6 +35,8 @@ if (process.env["NODE_ENV"] === "production") {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   const candidates = [
+    path.resolve(__dirname, "../../clinic-app/dist/public"),
+    path.resolve(process.cwd(), "artifacts/clinic-app/dist/public"),
     path.resolve(__dirname, "../../clinic-app/dist"),
     path.resolve(process.cwd(), "artifacts/clinic-app/dist"),
   ];
