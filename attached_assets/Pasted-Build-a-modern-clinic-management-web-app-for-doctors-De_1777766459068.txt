@@ -1,0 +1,97 @@
+Build a modern clinic management web app for doctors.
+Deploy-ready on Railway.
+
+## Core Features
+1. Dashboard — today's appointments count, patients seen,
+   upcoming appointments (visual cards)
+2. Appointments — calendar view, add/edit/cancel appointment,
+   patient name, time, reason
+3. Patients — list with search, patient profile (name, age,
+   contact, visit history, notes)
+4. Quick Add — floating button to add appointment from any page
+
+## Design (MOST IMPORTANT)
+- Style: Clean medical + modern SaaS (like Linear meets
+  a medical app)
+- Colors: Deep navy #0F172A + white + accent blue #3B82F6
+  + soft green #10B981 for status
+- Font: Inter
+- Layout: Sidebar navigation (collapsible), main content area
+- Cards with subtle shadows, rounded corners (12px)
+- Micro-animations on hover and transitions between pages
+- Fully responsive (mobile + desktop)
+- Empty states with helpful illustrations (SVG)
+
+## Tech Stack
+- Frontend: React + Tailwind CSS
+- Backend: Node.js + Express
+- Database: PostgreSQL (use Railway PostgreSQL plugin)
+- ORM: Prisma (connects to Railway DATABASE_URL automatically)
+- Authentication: JWT stored in httpOnly cookies
+  (secure, works perfectly with Railway env variables)
+- Password hashing: bcrypt
+- Environment variables via Railway dashboard
+  (never hardcode secrets)
+
+## Authentication
+- Doctor login page (email + password)
+- JWT secret stored as RAILWAY env variable: JWT_SECRET
+- Token expiry: 7 days
+- Protected routes — redirect to login if no valid token
+- Single account for demo: 
+  email: doctor@clinic.com / password: demo1234
+- Middleware to verify JWT on every protected API route
+
+## Railway Deployment Setup
+Include all of the following files:
+
+1. railway.json
+{
+  "build": { "builder": "NIXPACKS" },
+  "deploy": {
+    "startCommand": "npx prisma migrate deploy && node server.js",
+    "restartPolicyType": "ON_FAILURE"
+  }
+}
+
+2. .env.example
+DATABASE_URL=postgresql://...
+JWT_SECRET=your_secret_here
+PORT=3000
+NODE_ENV=production
+
+3. Procfile
+web: npx prisma migrate deploy && node server.js
+
+4. package.json scripts must include:
+"start": "node server.js",
+"build": "npx prisma generate"
+
+## Railway Deployment Steps (add as README.md)                                                                                                                                                                                           for exampl
+Step 1: Push code to GitHub
+Step 2: Go to railway.app → New Project → Deploy from GitHub
+Step 3: Add PostgreSQL plugin from Railway dashboard
+Step 4: Set environment variables in Railway:
+        - DATABASE_URL (auto-set by PostgreSQL plugin)
+        - JWT_SECRET (generate random 32-char string)
+        - NODE_ENV=production
+Step 5: Railway auto-detects Node.js and runs NIXPACKS build
+Step 6: After deploy, run seed from Railway shell:
+        node prisma/seed.js
+Step 7: App is live on Railway-generated domain
+
+## Data
+- Seed with 5 sample patients and 8 sample appointments
+  so the app looks alive on demo
+- Seed file: prisma/seed.js
+- Run after first deploy via Railway shell
+
+## UX Details
+- Sidebar shows: Dashboard, Appointments, Patients
+- Dashboard has a greeting: "Good morning, Dr. [Name]"
+- Appointment status colors: confirmed (green),
+  pending (yellow), cancelled (red)
+- Patient card shows last visit date
+- Search bar filters patients in real time
+
+Keep code clean, modular, and well-commented.
