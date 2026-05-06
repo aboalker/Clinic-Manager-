@@ -187,11 +187,11 @@ export const DeletePatientResponse = zod.object({
  * @summary List appointments
  */
 export const ListAppointmentsQueryParams = zod.object({
-  date: zod.date().optional().describe("Filter by date (YYYY-MM-DD)"),
+  date: zod.coerce.string().optional().describe("Filter by date (YYYY-MM-DD)"),
   patientId: zod.coerce.number().optional().describe("Filter by patient"),
   status: zod.enum(["confirmed", "pending", "cancelled"]).optional(),
-  startDate: zod.date().optional(),
-  endDate: zod.date().optional(),
+  startDate: zod.coerce.string().optional(),
+  endDate: zod.coerce.string().optional(),
 });
 
 export const ListAppointmentsResponseItem = zod
