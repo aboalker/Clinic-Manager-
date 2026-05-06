@@ -24,10 +24,7 @@ function toLocalDateStr(d: Date): string {
 export default function Appointments() {
   const [date, setDate] = useState<Date | undefined>(new Date());
   const formattedDate = date ? toLocalDateStr(date) : undefined;
-  const { data: appointments, isLoading } = useListAppointments(
-    { date: formattedDate },
-    { query: { refetchOnMount: "always", refetchOnWindowFocus: true } },
-  );
+  const { data: appointments, isLoading } = useListAppointments({ date: formattedDate });
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
