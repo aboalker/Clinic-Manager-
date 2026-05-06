@@ -113,7 +113,7 @@ router.post("/", async (req: Request, res: Response) => {
 });
 
 router.get("/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const doctorId = doctorIdOf(req);
 
@@ -123,7 +123,7 @@ router.get("/:id", async (req: Request, res: Response) => {
 });
 
 router.put("/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const parsed = UpdateAppointmentBody.safeParse(req.body);
@@ -138,12 +138,17 @@ router.put("/:id", async (req: Request, res: Response) => {
     return;
   }
 
-  const updateData = { ...parsed.data };
-  if (updateData.date !== undefined) {
-    (updateData as any).date = toDateStr(updateData.date);
-  }
+  const { date: rawDate, ...rest } = parsed.data;
+  const updatePayload: {
+    patientId?: number;
+    date?: string;
+    time?: string;
+    reason?: string;
+    status?: "confirmed" | "pending" | "cancelled";
+    notes?: string | null;
+  } = rawDate !== undefined ? { ...rest, date: toDateStr(rawDate)! } : { ...rest };
 
-  await db.update(appointmentsTable).set(updateData).where(eq(appointmentsTable.id, id));
+  await db.update(appointmentsTable).set(updatePayload).where(eq(appointmentsTable.id, id));
 
   if (parsed.data.status === "confirmed") {
     await db.update(patientsTable)
@@ -156,7 +161,7 @@ router.put("/:id", async (req: Request, res: Response) => {
 });
 
 router.delete("/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const doctorId = doctorIdOf(req);
 

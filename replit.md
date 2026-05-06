@@ -22,7 +22,7 @@ Arabic-first clinic management web app.
 - Brand: teal/emerald medical palette via `--primary 168 76% 38%` and `--sidebar 195 70% 14%`
 - Utilities: `.gradient-brand`, `.gradient-brand-soft`, `.text-gradient-brand`, `.glass-card`
 - Cards use `border-0 shadow-md` for a modern feel; rounded-2xl/3xl throughout
-#لرتت
+
 ## Codegen
 - After editing `lib/api-spec/openapi.yaml`: `pnpm --filter @workspace/api-spec run codegen`
 - ⚠️ Orval regenerates `lib/api-zod/src/index.ts` with broken refs — always overwrite to:
