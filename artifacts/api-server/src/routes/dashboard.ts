@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { db, appointmentsTable, patientsTable } from "@workspace/db";
-import { eq, count, gte, and, asc, desc } from "drizzle-orm";
+import { eq, count, gte, and, asc, desc, like, sql } from "drizzle-orm";
 import { requireAuth, JwtPayload } from "../middlewares/auth.js";
 
 const router = Router();
@@ -53,13 +53,13 @@ router.get("/summary", async (req: Request, res: Response) => {
     upcomingCount,
     patientsSeen,
   ] = await Promise.all([
-    scopedAppt(eq(appointmentsTable.date, today)),
+    scopedAppt(like(appointmentsTable.date, today + "%")),
     db.select({ count: count() }).from(patientsTable).where(eq(patientsTable.doctorId, doctorId)),
     scopedAppt(eq(appointmentsTable.status, "confirmed")),
     scopedAppt(eq(appointmentsTable.status, "pending")),
     scopedAppt(eq(appointmentsTable.status, "cancelled")),
-    scopedAppt(and(gte(appointmentsTable.date, today), eq(appointmentsTable.status, "confirmed"))!),
-    scopedAppt(and(eq(appointmentsTable.date, today), eq(appointmentsTable.status, "confirmed"))!),
+    scopedAppt(and(sql`LEFT(${appointmentsTable.date}, 10) >= ${today}`, eq(appointmentsTable.status, "confirmed"))!),
+    scopedAppt(and(like(appointmentsTable.date, today + "%"), eq(appointmentsTable.status, "confirmed"))!),
   ]);
 
   res.json({
@@ -84,7 +84,7 @@ router.get("/upcoming", async (req: Request, res: Response) => {
     .innerJoin(patientsTable, eq(appointmentsTable.patientId, patientsTable.id))
     .where(and(
       eq(patientsTable.doctorId, doctorId),
-      gte(appointmentsTable.date, today),
+      sql`LEFT(${appointmentsTable.date}, 10) >= ${today}`,
     ))
     .orderBy(asc(appointmentsTable.date), asc(appointmentsTable.time))
     .limit(limit);
