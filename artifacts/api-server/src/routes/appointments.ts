@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { db, appointmentsTable, patientsTable } from "@workspace/db";
-import { eq, desc, asc, and, gte, lte } from "drizzle-orm";
+import { eq, desc, asc, and, gte, lte, like, sql } from "drizzle-orm";
 import { requireAuth, JwtPayload } from "../middlewares/auth.js";
 import {
   CreateAppointmentBody,
@@ -13,6 +13,13 @@ router.use(requireAuth);
 
 function doctorIdOf(req: Request): number {
   return (req as Request & { doctor: JwtPayload }).doctor.doctorId;
+}
+
+function toDateStr(d: Date | string | undefined | null): string | undefined {
+  if (!d) return undefined;
+  if (d instanceof Date) return d.toISOString().split("T")[0];
+  const s = String(d);
+  return s.length > 10 ? s.split("T")[0] : s;
 }
 
 const apptSelect = {
@@ -62,11 +69,16 @@ router.get("/", async (req: Request, res: Response) => {
 
   const { date, patientId, status, startDate, endDate } = parsed.data;
   const conditions = [eq(patientsTable.doctorId, doctorId)];
-  if (date) conditions.push(eq(appointmentsTable.date, date));
+
+  const dateStr = toDateStr(date);
+  const startDateStr = toDateStr(startDate);
+  const endDateStr = toDateStr(endDate);
+
+  if (dateStr) conditions.push(like(appointmentsTable.date, dateStr + "%"));
   if (patientId) conditions.push(eq(appointmentsTable.patientId, patientId));
   if (status) conditions.push(eq(appointmentsTable.status, status as "confirmed" | "pending" | "cancelled"));
-  if (startDate) conditions.push(gte(appointmentsTable.date, startDate));
-  if (endDate) conditions.push(lte(appointmentsTable.date, endDate));
+  if (startDateStr) conditions.push(sql`LEFT(${appointmentsTable.date}, 10) >= ${startDateStr}`);
+  if (endDateStr) conditions.push(sql`LEFT(${appointmentsTable.date}, 10) <= ${endDateStr}`);
 
   const appointments = await db.select(apptSelect)
     .from(appointmentsTable)
@@ -87,7 +99,8 @@ router.post("/", async (req: Request, res: Response) => {
     return;
   }
 
-  const [created] = await db.insert(appointmentsTable).values(parsed.data).returning();
+  const values = { ...parsed.data, date: toDateStr(parsed.data.date)! };
+  const [created] = await db.insert(appointmentsTable).values(values).returning();
 
   if (created.status === "confirmed") {
     await db.update(patientsTable)
@@ -100,7 +113,7 @@ router.post("/", async (req: Request, res: Response) => {
 });
 
 router.get("/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const doctorId = doctorIdOf(req);
 
@@ -110,7 +123,7 @@ router.get("/:id", async (req: Request, res: Response) => {
 });
 
 router.put("/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
 
   const parsed = UpdateAppointmentBody.safeParse(req.body);
@@ -125,14 +138,30 @@ router.put("/:id", async (req: Request, res: Response) => {
     return;
   }
 
-  await db.update(appointmentsTable).set(parsed.data).where(eq(appointmentsTable.id, id));
+  const { date: rawDate, ...rest } = parsed.data;
+  const updatePayload: {
+    patientId?: number;
+    date?: string;
+    time?: string;
+    reason?: string;
+    status?: "confirmed" | "pending" | "cancelled";
+    notes?: string | null;
+  } = rawDate !== undefined ? { ...rest, date: toDateStr(rawDate)! } : { ...rest };
+
+  await db.update(appointmentsTable).set(updatePayload).where(eq(appointmentsTable.id, id));
+
+  if (parsed.data.status === "confirmed") {
+    await db.update(patientsTable)
+      .set({ lastVisitDate: new Date() })
+      .where(and(eq(patientsTable.id, existing.patientId), eq(patientsTable.doctorId, doctorId)));
+  }
 
   const appt = await getAppointmentForDoctor(id, doctorId);
   res.json(appt);
 });
 
 router.delete("/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params["id"] as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
   const doctorId = doctorIdOf(req);
 

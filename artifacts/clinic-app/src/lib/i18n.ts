@@ -102,6 +102,10 @@ export const ar = {
     patientId: "رقم المريض",
     viewProfile: "عرض ملف المريض",
     noNotes: "لا توجد ملاحظات إضافية",
+    quickActions: "تغيير حالة الموعد",
+    markReviewed: "تمت المراجعة",
+    markPending: "إعادة للانتظار",
+    markCancelled: "إلغاء الموعد",
   },
 
   patients: {

@@ -18,7 +18,9 @@ export default function NewAppointment() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [patientId, setPatientId] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const today = new Date();
+  const localToday = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const [date, setDate] = useState(localToday);
   const [time, setTime] = useState("09:00");
   const [reason, setReason] = useState("");
   const [status, setStatus] = useState<"confirmed" | "pending" | "cancelled">("pending");

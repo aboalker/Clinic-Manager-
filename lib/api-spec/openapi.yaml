@@ -236,7 +236,6 @@ paths:
           in: query
           schema:
             type: string
-            format: date
           description: Filter by date (YYYY-MM-DD)
         - name: patientId
           in: query
@@ -252,12 +251,10 @@ paths:
           in: query
           schema:
             type: string
-            format: date
         - name: endDate
           in: query
           schema:
             type: string
-            format: date
       responses:
         "200":
           description: List of appointments
