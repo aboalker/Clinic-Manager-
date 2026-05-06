@@ -17,9 +17,13 @@ const statusBadge = (s: string) => {
   }
 };
 
+function toLocalDateStr(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export default function Appointments() {
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const formattedDate = date ? date.toISOString().split("T")[0] : undefined;
+  const formattedDate = date ? toLocalDateStr(date) : undefined;
   const { data: appointments, isLoading } = useListAppointments({ date: formattedDate });
 
   return (

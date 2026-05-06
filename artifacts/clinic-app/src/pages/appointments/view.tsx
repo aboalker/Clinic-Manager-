@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowRight, Trash2, CalendarDays, Clock, User, FileText, Pencil } from "lucide-react";
+import { ArrowRight, Trash2, CalendarDays, Clock, User, FileText, Pencil, CheckCircle2, XCircle, RotateCcw } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { t, formatDateAr } from "@/lib/i18n";
@@ -19,11 +19,18 @@ import { t, formatDateAr } from "@/lib/i18n";
 const statusBadge = (s: string) => {
   switch (s) {
     case "confirmed": return { label: t.appointments.statusConfirmed, cls: "bg-emerald-100 text-emerald-700 border-emerald-200" };
-    case "pending": return { label: t.appointments.statusPending, cls: "bg-amber-100 text-amber-700 border-amber-200" };
+    case "pending":   return { label: t.appointments.statusPending,   cls: "bg-amber-100 text-amber-700 border-amber-200" };
     case "cancelled": return { label: t.appointments.statusCancelled, cls: "bg-red-100 text-red-700 border-red-200" };
     default: return { label: s, cls: "bg-slate-100 text-slate-700 border-slate-200" };
   }
 };
+
+function toInputDate(d: Date | string | null | undefined): string {
+  if (!d) return "";
+  if (d instanceof Date) return d.toISOString().split("T")[0];
+  const s = String(d);
+  return s.length > 10 ? s.split("T")[0] : s;
+}
 
 export default function ViewAppointment() {
   const { id } = useParams();
@@ -44,7 +51,7 @@ export default function ViewAppointment() {
 
   useEffect(() => {
     if (appointment) {
-      setDate(appointment.date);
+      setDate(toInputDate(appointment.date));
       setTime(appointment.time);
       setReason(appointment.reason);
       setStatus(appointment.status);
@@ -88,6 +95,13 @@ export default function ViewAppointment() {
     });
   };
 
+  const quickStatus = (s: "confirmed" | "pending" | "cancelled") => {
+    updateAppointment({
+      id: appointmentId,
+      data: { status: s },
+    });
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -100,7 +114,7 @@ export default function ViewAppointment() {
             <p className="text-muted-foreground text-sm">{t.appointments.detailsSub}</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {!isEditing && (
             <Button variant="outline" onClick={() => setIsEditing(true)} className="gap-2">
               <Pencil size={16} /> {t.appointments.edit}
@@ -123,8 +137,8 @@ export default function ViewAppointment() {
 
       {!isEditing ? (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div className="md:col-span-2">
-            <Card className="border-0 shadow-md h-full">
+          <div className="md:col-span-2 space-y-4">
+            <Card className="border-0 shadow-md">
               <CardContent className="p-6 md:p-8 space-y-6">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -169,6 +183,50 @@ export default function ViewAppointment() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Quick status action buttons */}
+            <Card className="border-0 shadow-md">
+              <CardContent className="p-5">
+                <p className="text-sm font-semibold text-muted-foreground mb-3">{t.appointments.quickActions}</p>
+                <div className="flex flex-wrap gap-2">
+                  {appointment.status !== "confirmed" && (
+                    <Button
+                      size="sm"
+                      onClick={() => quickStatus("confirmed")}
+                      disabled={isUpdating}
+                      className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white border-0"
+                    >
+                      <CheckCircle2 size={15} />
+                      {t.appointments.markReviewed}
+                    </Button>
+                  )}
+                  {appointment.status !== "pending" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => quickStatus("pending")}
+                      disabled={isUpdating}
+                      className="gap-2 border-amber-300 text-amber-700 hover:bg-amber-50"
+                    >
+                      <RotateCcw size={15} />
+                      {t.appointments.markPending}
+                    </Button>
+                  )}
+                  {appointment.status !== "cancelled" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => quickStatus("cancelled")}
+                      disabled={isUpdating}
+                      className="gap-2 border-red-300 text-red-600 hover:bg-red-50"
+                    >
+                      <XCircle size={15} />
+                      {t.appointments.markCancelled}
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           <div>
@@ -198,11 +256,11 @@ export default function ViewAppointment() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="date" className="font-semibold">{t.appointments.date}</Label>
-                  <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required className="h-11" />
+                  <Input id="date" type="date" value={date} onChange={(e) => setDate(e.target.value)} required className="h-11" dir="ltr" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="time" className="font-semibold">{t.appointments.time}</Label>
-                  <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} required className="h-11" />
+                  <Input id="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} required className="h-11" dir="ltr" />
                 </div>
               </div>
               <div className="space-y-2">
